@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/andres-erbsen/clock"
+	"github.com/loggie-io/loggie/pkg/core/result"
 )
 
 // Limiter is used to rate-limit some process, possibly across goroutines.
@@ -27,7 +28,7 @@ import (
 // may block to throttle the goroutine.
 type Limiter interface {
 	// Take should block to make sure that the RPS is met.
-	Take() time.Time
+	Take(isDrop bool) time.Time
 }
 
 // Clock is the minimum necessary interface to instantiate a rate limiter with
@@ -109,7 +110,8 @@ func NewUnlimited() Limiter {
 	return unlimited{}
 }
 
-func (unlimited) Take() time.Time {
+func (unlimited) Take(isDrop bool) time.Time {
+	_ = isDrop
 	return time.Now()
 }
 
@@ -149,7 +151,7 @@ func newUnsafeBased(rate int, opts ...Option) *unsafeLimiter {
 
 // Take blocks to ensure that the time spent between multiple
 // Take calls is on average time.Second/rate.
-func (t *unsafeLimiter) Take() time.Time {
+func (t *unsafeLimiter) Take(isDrop bool) time.Time {
 	now := t.clock.Now()
 
 	// If this is our first request, then we allow it.
@@ -173,9 +175,14 @@ func (t *unsafeLimiter) Take() time.Time {
 
 	// If sleepFor is positive, then we should sleep now.
 	if t.sleepFor > 0 {
-		t.clock.Sleep(t.sleepFor)
-		t.last = now.Add(t.sleepFor)
-		t.sleepFor = 0
+		if isDrop {
+			_ = result.Drop()
+			t.last = now
+		} else {
+			t.clock.Sleep(t.sleepFor)
+			t.last = now.Add(t.sleepFor)
+			t.sleepFor = 0
+		}
 	} else {
 		t.last = now
 	}

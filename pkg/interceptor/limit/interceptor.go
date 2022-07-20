@@ -41,6 +41,7 @@ type Interceptor struct {
 	name   string
 	config *Config
 	qps    int
+	isDrop bool
 	l      Limiter
 }
 
@@ -63,6 +64,7 @@ func (i *Interceptor) String() string {
 func (i *Interceptor) Init(context api.Context) error {
 	i.name = context.Name()
 	i.qps = i.config.Qps
+	i.isDrop = i.config.IsDrop
 	return nil
 }
 
@@ -77,7 +79,7 @@ func (i *Interceptor) Stop() {
 }
 
 func (i *Interceptor) Intercept(invoker source.Invoker, invocation source.Invocation) api.Result {
-	i.l.Take()
+	i.l.Take(i.isDrop)
 	return invoker.Invoke(invocation)
 }
 
