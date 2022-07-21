@@ -75,6 +75,7 @@ func (r *ProtobufDecodeProcessor) Process(e api.Event) error {
 		val = []byte(v)
 	}
 
+	res := make(map[string]interface{})
 	ple := protoLogEvent.ProtoLogEvent{}
 	err := proto.Unmarshal(val, &ple)
 	if err != nil {
@@ -83,7 +84,7 @@ func (r *ProtobufDecodeProcessor) Process(e api.Event) error {
 		return nil
 	}
 
-	res := map[string]interface{}{
+	res = map[string]interface{}{
 		"@timestamp":      time.Now(),
 		"loggerFqcn":      ple.LoggerFqcn,
 		"marker":          ple.Marker,
